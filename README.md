@@ -30,12 +30,30 @@ sudo dnf install mpg123 ffmpeg
 brew install mpg123 ffmpeg
 ```
 
+## Install RadioGoGo
+
+### Build it from source code
+
+You can build `RadioGoGo` locally:
+
+```sh
+go build ./src
+```
+
 ## Usage
 
 To play an online radio stream, run:
 
 ```sh
-./radiogogo http://stream.radioparadise.com/mp3-192
+radiogogo http://stream.radioparadise.com/mp3-192
+```
+
+If you don't provide a radio stream, a random one will be chosen for you:
+
+```sh
+radiogogo
+No URL provided. A random radio station will be chosen.
+Selected station: Radio Swiss Classic (https://stream.srg-ssr.ch/m/rsc_de/mp3_128)
 ```
 
 ### Running from Source Code
@@ -43,7 +61,7 @@ To play an online radio stream, run:
 If you want to run `radiogogo` from the source code, navigate to the project root directory and execute:
 
 ```sh
-go run src/main.go http://stream.radioparadise.com/mp3-192
+go run ./src http://stream.radioparadise.com/mp3-192
 ```
 
 ### Example
@@ -51,7 +69,7 @@ go run src/main.go http://stream.radioparadise.com/mp3-192
 Play **Radio Paradise** using `radiogogo`:
 
 ```sh
-./radiogogo http://stream.radioparadise.com/mp3-192
+go run ./src http://stream.radioparadise.com/mp3-192
 ```
 
 ## Terminal Playback Controls

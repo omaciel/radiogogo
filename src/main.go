@@ -1,56 +1,85 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
-// isValidStream checks if the URL is reachable
-func isValidStream(url string) bool {
-	client := http.Client{
-		Timeout: 5 * time.Second,
-	}
-	resp, err := client.Head(url)
+// fetchM3U retrieves the first valid URL from an M3U file
+func fetchM3U(m3uURL string) (string, error) {
+	resp, err := http.Get(m3uURL)
 	if err != nil {
-		fmt.Println("Error checking URL:", err)
-		return false
+		return "", fmt.Errorf("failed to fetch M3U file: %v", err)
 	}
 	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
+
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "http") { // First valid stream URL
+			return line, nil
+		}
+	}
+
+	return "", fmt.Errorf("no valid stream URL found in M3U file")
 }
 
-// playStream tries mpg123, then falls back to ffplay
+// playStream attempts to play a given stream URL
 func playStream(url string) error {
-	// Try mpg123 first
-	cmd := exec.Command("mpg123", url)
+	cmd := exec.Command("mpg123", url) // Use mpg123 first
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
 		fmt.Println("mpg123 failed, trying ffplay...")
-		// If mpg123 fails, try ffplay
-		cmd = exec.Command("ffplay", "-nodisp", "-autoexit", url)
+		cmd = exec.Command("ffplay", "-nodisp", "-autoexit", url) // Use ffplay as fallback
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin // Allow terminal control keys
+
 		return cmd.Run()
 	}
 	return nil
 }
 
+// getRandomRadio selects a random radio station from the map
+func getRandomRadio() (string, string) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano())) // Create a new random generator
+	keys := make([]string, 0, len(radios))
+	for k := range radios {
+		keys = append(keys, k)
+	}
+	randomKey := keys[r.Intn(len(keys))]
+	return randomKey, radios[randomKey]
+}
+
 func main() {
+	var url string
+
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: radiogogo <stream_url>")
-		os.Exit(1)
+		fmt.Println("No URL provided. A random radio station will be chosen.")
+		name, randomURL := getRandomRadio()
+		fmt.Printf("Selected station: %s (%s)\n", name, randomURL)
+		url = randomURL
+	} else {
+		url = os.Args[1]
 	}
 
-	url := os.Args[1]
-
-	if !isValidStream(url) {
-		fmt.Println("Invalid or unavailable stream URL.")
-		os.Exit(1)
+	// If it's an M3U file, fetch the actual stream URL
+	if strings.HasSuffix(url, ".m3u") {
+		fmt.Println("Fetching stream from M3U file...")
+		streamURL, err := fetchM3U(url)
+		if err != nil {
+			fmt.Println("Error:", err)
+			os.Exit(1)
+		}
+		url = streamURL
 	}
 
 	fmt.Println("Playing:", url)
