@@ -37,7 +37,13 @@ brew install mpg123 ffmpeg
 You can build `RadioGoGo` locally:
 
 ```sh
-go build ./src
+go build -o radiogogo ./cmd/radiogogo
+```
+
+Or install it directly:
+
+```sh
+go install github.com/omaciel/radiogogo/cmd/radiogogo@latest
 ```
 
 ## Usage
@@ -61,7 +67,7 @@ Selected station: Radio Swiss Classic (https://stream.srg-ssr.ch/m/rsc_de/mp3_12
 If you want to run `radiogogo` from the source code, navigate to the project root directory and execute:
 
 ```sh
-go run ./src http://stream.radioparadise.com/mp3-192
+go run ./cmd/radiogogo http://stream.radioparadise.com/mp3-192
 ```
 
 ### Example
@@ -69,8 +75,28 @@ go run ./src http://stream.radioparadise.com/mp3-192
 Play **Radio Paradise** using `radiogogo`:
 
 ```sh
-go run ./src http://stream.radioparadise.com/mp3-192
+go run ./cmd/radiogogo http://stream.radioparadise.com/mp3-192
 ```
+
+## Station shortcuts
+
+List the built-in stations:
+
+```sh
+radiogogo --list
+```
+
+Play one by name:
+
+```sh
+radiogogo --station WUNC
+```
+
+## Accepted URLs
+
+Only `http` and `https` URLs are accepted. Other schemes — including `file://` —
+are refused, as are URLs beginning with `-`, which a media player would parse as
+a command-line flag.
 
 ## Terminal Playback Controls
 
