@@ -1,5 +1,11 @@
 # RadioGoGo - Command Line Online Radio Player
 
+[![CI](https://github.com/omaciel/radiogogo/actions/workflows/ci.yml/badge.svg)](https://github.com/omaciel/radiogogo/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/omaciel/radiogogo/actions/workflows/codeql.yml/badge.svg)](https://github.com/omaciel/radiogogo/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/omaciel/radiogogo/badge)](https://scorecard.dev/viewer/?uri=github.com/omaciel/radiogogo)
+[![Go Reference](https://pkg.go.dev/badge/github.com/omaciel/radiogogo.svg)](https://pkg.go.dev/github.com/omaciel/radiogogo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/omaciel/radiogogo)](https://goreportcard.com/report/github.com/omaciel/radiogogo)
+
 RadioGoGo is a simple command-line tool that allows users to play online radio streams directly from their terminal. It supports a wide range of stream formats and provides keyboard shortcuts to control playback.
 
 ## Features
@@ -114,6 +120,28 @@ While `radiogogo` is running, you can control playback using the following keys:
 
 - **mpg123** provides additional keyboard controls, accessible by pressing `h` during playback.
 - **ffplay** is used as a fallback if `mpg123` fails to play a stream.
+
+## Development
+
+```sh
+make help             # list every target
+make check            # everything CI runs: fmt, vet, lint, race tests, govulncheck
+make test             # tests only
+make build            # build into ./dist
+make release-snapshot # rehearse a full release locally, without tagging
+```
+
+## Security
+
+Each push and pull request is scanned by
+[govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) for known
+vulnerabilities, [gosec](https://github.com/securego/gosec) (via golangci-lint),
+and [CodeQL](https://codeql.github.com/). Repository hygiene is graded by
+[OpenSSF Scorecard](https://scorecard.dev/).
+
+Release archives ship with an SBOM, and `checksums.txt` is signed keylessly with
+[cosign](https://docs.sigstore.dev/) — verification instructions are in every
+release's notes.
 
 ## License
 
