@@ -38,6 +38,7 @@ Flags:
   --station NAME   play a named station (see --list)
   --list           list the built-in stations
   --version        print the version and exit
+  --help           print this message and exit
 
 Only http and https URLs are accepted.
 `
@@ -50,33 +51,60 @@ func main() {
 // reading globals, and returns an exit code rather than calling os.Exit.
 func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("radiogogo", flag.ContinueOnError)
-	fs.SetOutput(stderr)
-	fs.Usage = func() { fmt.Fprint(stderr, usage) }
+	// flag.FlagSet.Parse calls Usage itself on any parse error, including
+	// -h/--help, before we can distinguish the two below. Silence that
+	// automatic call and print the usage text ourselves so -h lands on
+	// stdout while a real parse error still lands on stderr.
+	fs.SetOutput(io.Discard)
+	fs.Usage = func() {}
 
 	showVersion := fs.Bool("version", false, "print the version and exit")
 	list := fs.Bool("list", false, "list the built-in stations")
 	stationName := fs.String("station", "", "play a named station")
 
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			fmt.Fprint(stdout, usage)
+			return exitOK
+		}
+		fmt.Fprint(stderr, usage)
 		return exitUsage
 	}
 
-	switch {
-	case *showVersion:
+	// --version always works first, unconditionally: asking a program its
+	// version should never be blocked by other flag conflicts.
+	if *showVersion {
 		fmt.Fprintf(stdout, "radiogogo %s\n", version)
 		return exitOK
-	case *list:
-		printStations(stdout)
-		return exitOK
+	}
+
+	stationSet := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "station" {
+			stationSet = true
+		}
+	})
+	if stationSet && *stationName == "" {
+		fmt.Fprintln(stderr, "radiogogo: --station requires a non-empty name")
+		return exitUsage
 	}
 
 	if *stationName != "" && fs.NArg() > 0 {
 		fmt.Fprintln(stderr, "radiogogo: pass either --station or a URL, not both")
 		return exitUsage
 	}
+	if *list && (*stationName != "" || fs.NArg() > 0) {
+		fmt.Fprintln(stderr, "radiogogo: --list cannot be combined with --station or a URL")
+		return exitUsage
+	}
 	if fs.NArg() > 1 {
 		fmt.Fprintf(stderr, "radiogogo: expected at most one URL, got %d\n", fs.NArg())
 		return exitUsage
+	}
+
+	if *list {
+		printStations(stdout)
+		return exitOK
 	}
 
 	target, err := selectTarget(*stationName, fs.Args(), stdout)
@@ -88,7 +116,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := play(ctx, target, stdout); err != nil {
+	if err := play(ctx, target, stdout, m3u.New(), player.New()); err != nil {
 		if errors.Is(err, context.Canceled) {
 			return exitOK
 		}
@@ -119,14 +147,14 @@ func selectTarget(stationName string, args []string, stdout io.Writer) (string, 
 }
 
 // play resolves a playlist if needed, then hands the stream to a player.
-func play(ctx context.Context, target string, stdout io.Writer) error {
+func play(ctx context.Context, target string, stdout io.Writer, resolver *m3u.Resolver, p *player.Player) error {
 	if err := player.Validate(target); err != nil {
 		return err
 	}
 
 	if m3u.IsPlaylist(target) {
 		fmt.Fprintln(stdout, "Fetching stream from M3U file...")
-		streamURL, err := m3u.New().Resolve(ctx, target)
+		streamURL, err := resolver.Resolve(ctx, target)
 		if err != nil {
 			return err
 		}
@@ -139,7 +167,7 @@ func play(ctx context.Context, target string, stdout io.Writer) error {
 	}
 
 	fmt.Fprintln(stdout, "Playing:", target)
-	return player.New().Play(ctx, target)
+	return p.Play(ctx, target)
 }
 
 // printStations writes the catalog as an aligned table.
