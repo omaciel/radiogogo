@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +33,39 @@ func TestIsPlaylist(t *testing.T) {
 			}
 		})
 	}
+}
+
+// FuzzIsPlaylist asserts IsPlaylist never panics and that a true result
+// always implies a parseable URL whose path ends in ".m3u" (case-insensitively).
+func FuzzIsPlaylist(f *testing.F) {
+	for _, seed := range []string{
+		"https://example.com/wunc.m3u",
+		"https://example.com/wunc.m3u?token=abc",
+		"https://example.com/WUNC.M3U",
+		"https://example.com/wunc.m3u#start",
+		"https://example.com/mp3-192",
+		"https://example.com/live.m3u8",
+		"https://example.com/s?file=a.m3u",
+		"https://m3u.example.com/stream",
+		"", "   ", "not a url at all", "://bad",
+	} {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, raw string) {
+		got := IsPlaylist(raw) // must not panic regardless of input
+
+		if !got {
+			return
+		}
+		u, err := url.Parse(raw)
+		if err != nil {
+			t.Fatalf("IsPlaylist(%q) = true, but the URL does not parse: %v", raw, err)
+		}
+		if !strings.HasSuffix(strings.ToLower(u.Path), ".m3u") {
+			t.Fatalf("IsPlaylist(%q) = true, but path %q does not end in .m3u", raw, u.Path)
+		}
+	})
 }
 
 func serve(t *testing.T, h http.HandlerFunc) *httptest.Server {
