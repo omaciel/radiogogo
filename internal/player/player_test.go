@@ -173,6 +173,41 @@ func TestPlayFFplayKeepsItsFlags(t *testing.T) {
 	}
 }
 
+// FuzzValidate asserts the security invariant Validate promises: anything it
+// accepts must genuinely be safe to hand a media player as an argument. A
+// table test only covers cases someone thought of; this explores the space.
+func FuzzValidate(f *testing.F) {
+	for _, seed := range []string{
+		"https://stream.example.com/mp3-192",
+		"http://example.com:8000/s",
+		"https://example.com/wunc.m3u?token=abc",
+		"-x", "--version", "file:///etc/passwd", "javascript:alert(1)",
+		"", "   ", "http://", "example.com/stream",
+	} {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, raw string) {
+		if err := Validate(raw); err != nil {
+			return // rejected: nothing to prove
+		}
+		// Everything below is an invariant Validate promises about what it accepts.
+		if strings.HasPrefix(raw, "-") {
+			t.Fatalf("Validate accepted %q, which a player would parse as a flag", raw)
+		}
+		u, err := url.Parse(raw)
+		if err != nil {
+			t.Fatalf("Validate accepted %q, which does not parse: %v", raw, err)
+		}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			t.Fatalf("Validate accepted %q with scheme %q; only http and https are allowed", raw, u.Scheme)
+		}
+		if u.Host == "" {
+			t.Fatalf("Validate accepted %q with no host", raw)
+		}
+	})
+}
+
 func TestPlayStopsOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	f := &fakeRunner{errs: map[string]error{"mpg123": errors.New("signal: killed")}}

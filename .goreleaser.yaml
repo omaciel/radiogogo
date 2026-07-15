@@ -50,14 +50,17 @@ sboms:
     artifacts: archive
 
 signs:
+  # cosign 3.x (installed by sigstore/cosign-installer@v4.1.2) dropped
+  # separate signature/certificate outputs in favour of a single bundle:
+  # --output-signature and --output-certificate still parse but are silently
+  # ignored, so this must stay in bundle form as long as cosign-installer
+  # tracks the 3.x line.
   - id: checksums
     cmd: cosign
-    signature: "${artifact}.sig"
-    certificate: "${artifact}.pem"
+    signature: "${artifact}.bundle"
     args:
       - sign-blob
-      - "--output-signature=${signature}"
-      - "--output-certificate=${certificate}"
+      - "--bundle=${signature}"
       - "${artifact}"
       - "--yes"
     artifacts: checksum
@@ -95,13 +98,12 @@ release:
     ## Verifying this release
 
     Checksums are signed with [cosign](https://docs.sigstore.dev/) keylessly —
-    there is no private key. Download `checksums.txt`, `checksums.txt.sig`, and
-    `checksums.txt.pem`, then:
+    there is no private key. Download `checksums.txt` and
+    `checksums.txt.bundle`, then:
 
     ```sh
     cosign verify-blob \
-      --certificate checksums.txt.pem \
-      --signature checksums.txt.sig \
+      --bundle checksums.txt.bundle \
       --certificate-identity-regexp 'https://github\.com/omaciel/radiogogo/\.github/workflows/.+' \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com \
       checksums.txt
