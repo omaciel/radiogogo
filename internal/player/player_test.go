@@ -142,15 +142,34 @@ func TestPlayValidatesBeforeSpawning(t *testing.T) {
 }
 
 func TestPlayFFplayKeepsItsFlags(t *testing.T) {
+	const streamURL = "https://example.com/s"
 	f := &fakeRunner{errs: map[string]error{"mpg123": errors.New("nope")}}
 
-	if err := NewWithRunner(f).Play(context.Background(), "https://example.com/s"); err != nil {
+	if err := NewWithRunner(f).Play(context.Background(), streamURL); err != nil {
 		t.Fatalf("Play() = %v", err)
 	}
 	args := f.calls[1].args
-	for _, want := range []string{"-nodisp", "-autoexit"} {
+	for _, want := range []string{"-nodisp", "-autoexit", "--"} {
 		if !slices.Contains(args, want) {
 			t.Errorf("ffplay args = %v, want %q", args, want)
 		}
+	}
+	sep, urlAt := slices.Index(args, "--"), slices.Index(args, streamURL)
+	if sep == -1 || urlAt == -1 || sep > urlAt {
+		t.Errorf("ffplay args = %v, want -- before the URL", args)
+	}
+}
+
+func TestPlayStopsOnCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	f := &fakeRunner{errs: map[string]error{"mpg123": errors.New("signal: killed")}}
+	cancel()
+
+	err := NewWithRunner(f).Play(ctx, "https://example.com/s")
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("Play() = %v, want context.Canceled; a normal stop must not look like a player failure", err)
+	}
+	if len(f.calls) != 1 {
+		t.Errorf("ran %d players, want 1; ffplay must not be tried after cancellation", len(f.calls))
 	}
 }

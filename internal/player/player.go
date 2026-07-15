@@ -28,7 +28,7 @@ func Validate(raw string) error {
 
 	u, err := url.Parse(raw)
 	if err != nil {
-		return fmt.Errorf("%w: %s: %v", ErrInvalidURL, raw, err)
+		return fmt.Errorf("%w: %q: %w", ErrInvalidURL, raw, err)
 	}
 	switch u.Scheme {
 	case "http", "https":
@@ -113,6 +113,11 @@ func (p *Player) Play(ctx context.Context, rawURL string) error {
 		err := p.runner.Run(ctx, c.name, c.args...)
 		if err == nil {
 			return nil
+		}
+		// A cancelled context is a normal stop, not a player failure: don't
+		// try the next player and don't fold it in with real failures.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
 		}
 		errs = append(errs, fmt.Errorf("%s: %w", c.name, err))
 	}
