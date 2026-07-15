@@ -2177,11 +2177,30 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-### Task 10: Pin actions to SHAs, add badges, final verification
+### Task 10: Upgrade action versions, pin to SHAs, add badges, final verification
 
 Pinning is deferred to one task because it is a single mechanical sweep over
 every workflow, and because Scorecard's `Pinned-Dependencies` check grades all
 of them together.
+
+**Scope expanded after Task 9's review.** Tasks 6–9 wrote action versions from a
+January 2026 knowledge cutoff; it is now July 2026 and every major is 1–3
+versions behind. Two are not merely stale but **broken**, and both were verified
+against the live GitHub API rather than inferred:
+
+- **`ossf/scorecard-action@v2` does not exist.** That repository publishes no
+  `vN` major tags at all — only full versions (`v2.4.3`, `v2.4.2`, …).
+  `refs/tags/v2` returns 404, while the same probe against `actions/checkout@v4`
+  resolves, so the method is sound. As written, Scorecard fails on its first run
+  with "Unable to resolve action".
+- **`golangci-lint-action@v6` cannot drive our config.** Its v7.0.0 release notes
+  state "The GitHub Action v7 supports golangci-lint v2 only", and v8.0.0
+  "Requires golangci-lint version >= v2.1.0". Our `.golangci.yml` is
+  `version: "2"`. v6 predates that split.
+
+Pinning a SHA freezes whatever it points at, so versions are corrected *before*
+pinning rather than left for Dependabot to raise as seven separate major-bump
+PRs (majors are deliberately ungrouped) with two jobs red in the meantime.
 
 **Files:**
 - Modify: `.github/workflows/ci.yml`, `codeql.yml`, `scorecard.yml`, `release.yml`
@@ -2191,7 +2210,36 @@ of them together.
 - Consumes: all four workflows.
 - Produces: the final state of the branch.
 
-- [ ] **Step 1: Resolve every action tag to a commit SHA**
+- [ ] **Step 1: Upgrade every action to its current major**
+
+Apply exactly this mapping. The right-hand column is what the `uses:` ref must
+say after this step. Verified against the GitHub API on 2026-07-15:
+
+| Action | From | To | Why |
+|---|---|---|---|
+| `ossf/scorecard-action` | `v2` | **`v2.4.3`** | no `vN` tags exist; `v2` is unresolvable |
+| `golangci/golangci-lint-action` | `v6` | **`v9`** | v6 predates golangci-lint v2; our config is `version: "2"` |
+| `actions/attest-build-provenance` | `v1` | **`v4`** | v1 is a 2024-11-05 commit; current is v4.1.1 |
+| `actions/checkout` | `v4` | **`v7`** | current major |
+| `actions/setup-go` | `v5` | **`v6`** | current major |
+| `actions/upload-artifact` | `v4` | **`v7`** | current major |
+| `goreleaser/goreleaser-action` | `v6` | **`v7`** | current major |
+| `sigstore/cosign-installer` | `v3` | **`v4`** | current major |
+| `github/codeql-action/*` | `v3` | **`v4`** | current major; all four subpaths |
+| `anchore/sbom-action/download-syft` | `v0` | **`v0`** | unchanged — `v0` is its only major |
+
+Two inputs must be re-checked against the new majors, because a major bump is
+exactly where an input gets renamed or removed:
+
+- `golangci-lint-action@v9` still takes `version:`. Keep `version: latest` unless
+  v9 rejects it.
+- `goreleaser-action@v7` still takes `distribution:`, `version:`, and `args:`.
+  Keep `version: "~> v2"` — that pins GoReleaser itself, not the action.
+
+If any input is rejected, fix it per the action's own docs for that major and
+record what changed. Do not silently drop an input.
+
+- [ ] **Step 2: Resolve every upgraded tag to a commit SHA**
 
 ```bash
 cd /Users/omaciel/hacking/github.com/omaciel/radiogogo
@@ -2211,31 +2259,33 @@ grep -rhoE 'uses: [a-zA-Z0-9._/-]+@v[0-9.]+' .github/workflows/ \
     done
 ```
 
-Expected: one `owner/repo@<40-char-sha> # vN` line per action, and no `FAILED`
-lines. `github/codeql-action` appears three times (init, autobuild, analyze) but
-resolves once — subpaths share the repo's SHA.
+Expected: one `owner/repo@<40-char-sha> # vN` line per action, and **no `FAILED`
+lines**. A `FAILED` here means that tag does not exist — exactly the
+`scorecard-action@v2` defect — so treat any `FAILED` as a blocker, not a
+warning. `github/codeql-action` appears four times (init, autobuild, analyze,
+upload-sarif) but resolves once — subpaths share the repo's SHA.
 
-- [ ] **Step 2: Apply the pins**
+- [ ] **Step 3: Apply the pins**
 
 For every `uses:` line in all four workflow files, replace the tag with the
-resolved SHA and keep the tag as a trailing comment, so a human can still read
-the version:
+resolved SHA and keep the upgraded tag as a trailing comment, so a human can
+still read the version:
 
 ```yaml
-      - uses: actions/checkout@<sha> # v4
-      - uses: actions/setup-go@<sha> # v5
+      - uses: actions/checkout@<sha> # v7
+      - uses: actions/setup-go@<sha> # v6
 ```
 
 `github/codeql-action` subpaths take the same SHA:
 
 ```yaml
-      - uses: github/codeql-action/init@<sha> # v3
-      - uses: github/codeql-action/autobuild@<sha> # v3
-      - uses: github/codeql-action/analyze@<sha> # v3
-      - uses: github/codeql-action/upload-sarif@<sha> # v3
+      - uses: github/codeql-action/init@<sha> # v4
+      - uses: github/codeql-action/autobuild@<sha> # v4
+      - uses: github/codeql-action/analyze@<sha> # v4
+      - uses: github/codeql-action/upload-sarif@<sha> # v4
 ```
 
-- [ ] **Step 3: Verify no unpinned action remains**
+- [ ] **Step 4: Verify no unpinned action remains**
 
 ```bash
 if grep -rnE 'uses: [^#]*@v[0-9.]+\s*$' .github/workflows/; then
@@ -2252,7 +2302,7 @@ for f in sorted(glob.glob('.github/workflows/*.yml')):
 
 Expected: `all actions pinned`, then all four files parse.
 
-- [ ] **Step 4: Add badges and a security section to the README**
+- [ ] **Step 5: Add badges and a security section to the README**
 
 Insert immediately below the `# RadioGoGo - Command Line Online Radio Player`
 heading:
@@ -2295,7 +2345,7 @@ Release archives ship with an SBOM, and `checksums.txt` is signed keylessly with
 release's notes.
 ````
 
-- [ ] **Step 5: Run the full local check**
+- [ ] **Step 6: Run the full local check**
 
 ```bash
 make check
@@ -2304,7 +2354,7 @@ make check
 Expected: `fmt`, `vet`, `lint`, `test-race`, and `vuln` all pass with no
 findings. This is the last gate before the branch goes up.
 
-- [ ] **Step 6: Confirm the module still has zero dependencies**
+- [ ] **Step 7: Confirm the module still has zero dependencies**
 
 ```bash
 go mod tidy
@@ -2320,7 +2370,7 @@ module github.com/omaciel/radiogogo
 go 1.26.0
 ```
 
-- [ ] **Step 7: Re-verify behaviour end to end**
+- [ ] **Step 8: Re-verify behaviour end to end**
 
 ```bash
 make build
@@ -2334,7 +2384,7 @@ make build
 Expected: version stamped from git; catalog listed; `file://` and `-x` refused
 with `invalid stream URL` and exit 1; two URLs refused with exit 2 (usage).
 
-- [ ] **Step 8: Commit and push**
+- [ ] **Step 9: Commit and push**
 
 ```bash
 git add .github/workflows/ README.md
@@ -2353,7 +2403,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 git push -u origin modernize-go-tooling
 ```
 
-- [ ] **Step 9: Open the pull request**
+- [ ] **Step 10: Open the pull request**
 
 ```bash
 gh pr create --fill --title "Modernize: Go 1.26, security fixes, CI, scanning, and signed releases"
