@@ -12,7 +12,9 @@ COVER   := coverage.out
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-# Pinned so a tool upgrade is a reviewable commit rather than a surprise.
+# Intentionally unpinned: govulncheck fetches its vulnerability database at run
+# time, so the binary version matters less than the database, and a scanner
+# should not silently miss newly added checks.
 GOVULNCHECK_VERSION ?= latest
 
 .DEFAULT_GOAL := help
@@ -78,7 +80,7 @@ vuln: ## Scan for known vulnerabilities, including in the Go standard library
 	$(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) $(PKGS)
 
 .PHONY: check
-check: fmt vet lint test-race vuln ## Run everything CI runs
+check: vet lint test-race vuln ## Run everything CI runs
 
 ##@ Release
 

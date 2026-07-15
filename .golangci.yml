@@ -21,13 +21,13 @@ linters:
         linters:
           - errcheck
           - gosec
-      # std-error-handling only silences errcheck's own stdout/Flush pattern
-      # (EXC0001); gosec's G104 is a separate, overlapping check that the same
-      # preset does not cover (upstream carries that exclusion only in the
-      # "legacy" preset, which also covers unrelated linters we do not want to
-      # blanket-disable). Scope the G104 carve-out to the one file that
-      # deliberately ignores stdout write/Flush errors.
+      # gosec's G104 overlaps errcheck's unhandled-error check, but the
+      # std-error-handling preset only silences errcheck's. printStations
+      # deliberately ignores the Flush error: it writes the station table to
+      # stdout, where there is nothing useful to do about a write failure.
+      # Scoped to that one call so any other unhandled error here still fails.
       - path: cmd/radiogogo/main\.go
+        source: 'tw\.Flush\(\)'
         text: "G104"
         linters:
           - gosec
