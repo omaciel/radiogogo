@@ -12,7 +12,12 @@
 
 ## Global Constraints
 
-- **Go version:** `go.mod` declares `go 1.26.0`. Exact value, including patch.
+- **Go version:** `go.mod` declares `go 1.26.0` as the language floor **and**
+  `toolchain go1.26.5` as the toolchain builds use. CI derives its Go version
+  from this file, so the two must be kept distinct: pinning only `go 1.26.0`
+  pins CI to a toolchain with 13 known standard-library CVEs (fixed in 1.26.1),
+  which is exactly what the first CI run caught. `setup-go` v6 honours
+  `toolchain` over `go`.
 - **Zero third-party runtime dependencies.** `go.mod` must contain no `require`
   block when this plan is done. Tooling runs via `go run <pkg>@<version>` or as a
   CI action, never as a module dependency. If a task seems to need a library,

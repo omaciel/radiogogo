@@ -186,10 +186,33 @@ provenance attestation.
 
 ## Decisions and risks
 
-- **`go 1.26.0` floor.** With `GOTOOLCHAIN=auto` older installs fetch 1.26
-  automatically, so the practical cost is low. This would be the wrong call for a
-  library, where the directive is a hard floor on consumers. Accepted for a
-  distributed CLI.
+- **`go 1.26.0` floor, plus a `toolchain` directive.** With `GOTOOLCHAIN=auto`
+  older installs fetch the toolchain automatically, so the practical cost is low.
+  This would be the wrong call for a library, where the directive is a hard floor
+  on consumers. Accepted for a distributed CLI.
+
+  **Amended after CI proved the first version of this wrong.** The original
+  constraint said `go.mod` declares exactly `go 1.26.0`, and CI derives its Go
+  version from that file. Those two together pinned CI to 1.26.0 — the one
+  release carrying 13 known standard-library CVEs, all fixed in 1.26.1. The
+  first CI run failed `govulncheck` with traces reaching our own code, e.g.
+  `internal/m3u/m3u.go:29:21: m3u.IsPlaylist calls url.Parse` (GO-2026-4601,
+  incorrect parsing of IPv6 host literals in `net/url`).
+
+  It passed locally only by accident: installing `golangci-lint` pulled Go
+  1.26.5 in as a Homebrew dependency, so the developer machine was patched while
+  CI was not — a divergence no local command would have surfaced.
+
+  The fix separates the two things the `go` directive was being asked to mean at
+  once. `go 1.26.0` stays the *language floor* consumers must meet;
+  `toolchain go1.26.5` names the toolchain builds actually use. `setup-go` v6
+  honours `toolchain` over `go`, so CI gets the patched toolchain while `go.mod`
+  remains the single source of truth.
+
+  This is the concrete payoff of the reasoning in Context: with no third-party
+  dependencies, the standard library is the entire dependency surface, and
+  `govulncheck` is the only tool in the set that inspects it. It earned its place
+  on the first run.
 - **10s HTTP timeout.** Covers playlist fetch only, never playback — the player
   subprocess is unaffected and streams indefinitely as before. A radio server too
   slow to return a few hundred bytes of playlist in 10s is not worth waiting on.
