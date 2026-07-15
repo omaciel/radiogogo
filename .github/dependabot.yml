@@ -1,0 +1,36 @@
+version: 2
+
+updates:
+  # Nothing to do today: the module has no third-party requires. This exists so
+  # the first dependency added is covered from the moment it lands.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build"
+      include: scope
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  # This is the entry that does real work: it keeps the pinned action SHAs in
+  # .github/workflows current, and pinned SHAs never update by themselves.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: scope
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: [minor, patch]
