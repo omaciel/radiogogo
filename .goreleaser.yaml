@@ -4,7 +4,9 @@ project_name: radiogogo
 
 before:
   hooks:
-    - go mod tidy
+    # Read-only by design: GoReleaser validates git state before these run, so
+    # a hook that mutated go.mod would go undetected and the release would not
+    # match the tagged commit.
     - go mod verify
 
 builds:
