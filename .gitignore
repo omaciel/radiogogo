@@ -26,3 +26,7 @@ go.work.sum
 
 # Subagent-driven development scratch
 /.superpowers/
+
+# Build output
+/dist/
+coverage.out
