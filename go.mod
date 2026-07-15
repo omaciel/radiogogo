@@ -1,3 +1,3 @@
 module github.com/omaciel/radiogogo
 
-go 1.23.5
+go 1.26.0
