@@ -3,6 +3,7 @@ package player
 import (
 	"context"
 	"errors"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
@@ -23,6 +24,7 @@ func TestValidateRejects(t *testing.T) {
 		{"empty", "", "empty"},
 		{"whitespace only", "   ", "empty"},
 		{"no host", "http://", "no host"},
+		{"unparsable url", "http://exa\x7fmple.com", "invalid control character"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -37,6 +39,17 @@ func TestValidateRejects(t *testing.T) {
 				t.Errorf("Validate(%q) = %q, want the message to mention %q", tt.url, err, tt.wantMsg)
 			}
 		})
+	}
+}
+
+func TestValidateWrapsURLParseError(t *testing.T) {
+	err := Validate("http://exa\x7fmple.com")
+	if !errors.Is(err, ErrInvalidURL) {
+		t.Fatalf("Validate() = %v, want an error wrapping ErrInvalidURL", err)
+	}
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		t.Fatalf("Validate() = %v, want errors.As to reach a *url.Error; the double %%w wrap exists to make this work", err)
 	}
 }
 

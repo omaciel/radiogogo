@@ -86,6 +86,22 @@ func TestResolveSkipsCommentsAndBlanks(t *testing.T) {
 	}
 }
 
+func TestResolveSkipsNonHTTPEntries(t *testing.T) {
+	// A playlist is network content. Entries that are not http/https streams
+	// must never be returned, and "httpfoo" must not pass for "http".
+	srv := serve(t, func(w http.ResponseWriter, _ *http.Request) {
+		io.WriteString(w, "file:///etc/passwd\nftp://example.com/x\nhttpfoo\nhttps://stream.example.com/real\n")
+	})
+
+	got, err := NewWithClient(srv.Client()).Resolve(context.Background(), srv.URL)
+	if err != nil {
+		t.Fatalf("Resolve() = %v, want nil", err)
+	}
+	if want := "https://stream.example.com/real"; got != want {
+		t.Errorf("Resolve() = %q, want %q; non-http entries must not be returned", got, want)
+	}
+}
+
 func TestResolveWithoutAnyStreamURL(t *testing.T) {
 	srv := serve(t, func(w http.ResponseWriter, _ *http.Request) {
 		io.WriteString(w, "#EXTM3U\n#EXTINF:-1,nothing here\n")
