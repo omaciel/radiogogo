@@ -40,6 +40,12 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Without this GoReleaser derives the version from git describe, which
+          # is ambiguous when several tags point at one commit -- the ordinary
+          # case of promoting a release candidate to final. It then builds and
+          # publishes under whichever tag it picked, not the one that triggered
+          # this run.
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4
