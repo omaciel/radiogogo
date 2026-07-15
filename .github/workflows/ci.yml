@@ -21,6 +21,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        # The windows runner defaults to PowerShell, which mangles the Go flags
+        # below: it splits -coverprofile=coverage.out and hands go test a bogus
+        # ".out" package. Every run step in this job is POSIX shell so the three
+        # platforms execute identical commands.
+        shell: bash
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
@@ -33,7 +40,6 @@ jobs:
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
-        shell: bash
 
       - name: Test with race detector
         run: go test -race -count=1 -covermode=atomic -coverprofile=coverage.out ./...
