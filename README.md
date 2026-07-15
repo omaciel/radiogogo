@@ -1,5 +1,11 @@
 # RadioGoGo - Command Line Online Radio Player
 
+[![CI](https://github.com/omaciel/radiogogo/actions/workflows/ci.yml/badge.svg)](https://github.com/omaciel/radiogogo/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/omaciel/radiogogo/actions/workflows/codeql.yml/badge.svg)](https://github.com/omaciel/radiogogo/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/omaciel/radiogogo/badge)](https://scorecard.dev/viewer/?uri=github.com/omaciel/radiogogo)
+[![Go Reference](https://pkg.go.dev/badge/github.com/omaciel/radiogogo.svg)](https://pkg.go.dev/github.com/omaciel/radiogogo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/omaciel/radiogogo)](https://goreportcard.com/report/github.com/omaciel/radiogogo)
+
 RadioGoGo is a simple command-line tool that allows users to play online radio streams directly from their terminal. It supports a wide range of stream formats and provides keyboard shortcuts to control playback.
 
 ## Features
@@ -37,7 +43,13 @@ brew install mpg123 ffmpeg
 You can build `RadioGoGo` locally:
 
 ```sh
-go build ./src
+go build -o radiogogo ./cmd/radiogogo
+```
+
+Or install it directly:
+
+```sh
+go install github.com/omaciel/radiogogo/cmd/radiogogo@latest
 ```
 
 ## Usage
@@ -45,7 +57,7 @@ go build ./src
 To play an online radio stream, run:
 
 ```sh
-radiogogo http://stream.radioparadise.com/mp3-192
+radiogogo https://stream.radioparadise.com/mp3-192
 ```
 
 If you don't provide a radio stream, a random one will be chosen for you:
@@ -61,7 +73,7 @@ Selected station: Radio Swiss Classic (https://stream.srg-ssr.ch/m/rsc_de/mp3_12
 If you want to run `radiogogo` from the source code, navigate to the project root directory and execute:
 
 ```sh
-go run ./src http://stream.radioparadise.com/mp3-192
+go run ./cmd/radiogogo https://stream.radioparadise.com/mp3-192
 ```
 
 ### Example
@@ -69,8 +81,41 @@ go run ./src http://stream.radioparadise.com/mp3-192
 Play **Radio Paradise** using `radiogogo`:
 
 ```sh
-go run ./src http://stream.radioparadise.com/mp3-192
+go run ./cmd/radiogogo https://stream.radioparadise.com/mp3-192
 ```
+
+## Flags
+
+List the built-in stations:
+
+```sh
+radiogogo --list
+```
+
+Play one by name:
+
+```sh
+radiogogo --station WUNC
+```
+
+Print the version (stamped at release time, so a released binary can be
+traced back to the commit it was built from):
+
+```sh
+radiogogo --version
+```
+
+Print usage:
+
+```sh
+radiogogo --help
+```
+
+## Accepted URLs
+
+Only `http` and `https` URLs are accepted. Other schemes — including `file://` —
+are refused, as are URLs beginning with `-`, which a media player would parse as
+a command-line flag.
 
 ## Terminal Playback Controls
 
@@ -88,6 +133,28 @@ While `radiogogo` is running, you can control playback using the following keys:
 
 - **mpg123** provides additional keyboard controls, accessible by pressing `h` during playback.
 - **ffplay** is used as a fallback if `mpg123` fails to play a stream.
+
+## Development
+
+```sh
+make help             # list every target
+make check            # vet, lint, race tests, govulncheck (what CI gates on)
+make test             # tests only
+make build            # build into ./dist
+make release-snapshot # rehearse a full release locally, without tagging
+```
+
+## Security
+
+Each push and pull request is scanned by
+[govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) for known
+vulnerabilities, [gosec](https://github.com/securego/gosec) (via golangci-lint),
+and [CodeQL](https://codeql.github.com/). Repository hygiene is graded by
+[OpenSSF Scorecard](https://scorecard.dev/).
+
+Release archives ship with an SBOM, and `checksums.txt` is signed keylessly with
+[cosign](https://docs.sigstore.dev/) — verification instructions are in every
+release's notes.
 
 ## License
 
