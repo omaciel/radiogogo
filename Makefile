@@ -99,7 +99,7 @@ release-snapshot: ## Build a full release locally, without tagging or publishing
 .PHONY: release
 release: ## Tag and push a release (make release TAG=v0.2.0)
 	@test -n "$(TAG)" || { echo "usage: make release TAG=v0.2.0"; exit 1; }
-	@git diff --quiet HEAD || { echo "working tree is dirty; commit first"; exit 1; }
+	@test -z "$$(git status --porcelain)" || { echo "working tree is dirty; commit first"; exit 1; }
 	git tag -a $(TAG) -m "Release $(TAG)"
 	git push origin $(TAG)
 	@echo "Pushed $(TAG); GitHub Actions will build and publish the release."

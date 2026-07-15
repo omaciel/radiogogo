@@ -57,7 +57,7 @@ go install github.com/omaciel/radiogogo/cmd/radiogogo@latest
 To play an online radio stream, run:
 
 ```sh
-radiogogo http://stream.radioparadise.com/mp3-192
+radiogogo https://stream.radioparadise.com/mp3-192
 ```
 
 If you don't provide a radio stream, a random one will be chosen for you:
@@ -73,7 +73,7 @@ Selected station: Radio Swiss Classic (https://stream.srg-ssr.ch/m/rsc_de/mp3_12
 If you want to run `radiogogo` from the source code, navigate to the project root directory and execute:
 
 ```sh
-go run ./cmd/radiogogo http://stream.radioparadise.com/mp3-192
+go run ./cmd/radiogogo https://stream.radioparadise.com/mp3-192
 ```
 
 ### Example
@@ -81,10 +81,10 @@ go run ./cmd/radiogogo http://stream.radioparadise.com/mp3-192
 Play **Radio Paradise** using `radiogogo`:
 
 ```sh
-go run ./cmd/radiogogo http://stream.radioparadise.com/mp3-192
+go run ./cmd/radiogogo https://stream.radioparadise.com/mp3-192
 ```
 
-## Station shortcuts
+## Flags
 
 List the built-in stations:
 
@@ -96,6 +96,19 @@ Play one by name:
 
 ```sh
 radiogogo --station WUNC
+```
+
+Print the version (stamped at release time, so a released binary can be
+traced back to the commit it was built from):
+
+```sh
+radiogogo --version
+```
+
+Print usage:
+
+```sh
+radiogogo --help
 ```
 
 ## Accepted URLs
@@ -125,7 +138,7 @@ While `radiogogo` is running, you can control playback using the following keys:
 
 ```sh
 make help             # list every target
-make check            # everything CI runs: fmt, vet, lint, race tests, govulncheck
+make check            # vet, lint, race tests, govulncheck (what CI gates on)
 make test             # tests only
 make build            # build into ./dist
 make release-snapshot # rehearse a full release locally, without tagging

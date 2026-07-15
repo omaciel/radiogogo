@@ -221,3 +221,8 @@ provenance attestation.
   local-file path is exactly the injection vector.
 - **`src/` → `cmd/` breaks `go build ./src`.** README is updated in the same
   change.
+- **`toolchain go1.26.5` is manually maintained.** Dependabot's `gomod` entry
+  bumps module requirements, not `toolchain` directives, so a future stdlib CVE
+  fixed in, say, 1.26.6 will redden `govulncheck` on whatever PR happens to run
+  next, unrelated to that PR's own changes, until someone bumps the line by
+  hand. Accepted as ongoing maintenance rather than automated.
