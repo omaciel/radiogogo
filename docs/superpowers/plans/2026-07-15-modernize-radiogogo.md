@@ -498,6 +498,10 @@ type ExecRunner struct{}
 
 // Run implements [Runner].
 func (ExecRunner) Run(ctx context.Context, name string, args ...string) error {
+	// gosec flags every exec call whose arguments are not literals. Here name
+	// is a constant from commandsFor, and Play rejects any URL that is not
+	// http/https or that starts with '-' before a Runner ever sees it.
+	//nolint:gosec // G204: name is constant; the URL is checked by Validate
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -1455,6 +1459,11 @@ linters:
     - revive
     - unconvert
   exclusions:
+    presets:
+      # Covers the long-standing errcheck carve-out for writes to stdout/stderr
+      # and for Flush/Close. A CLI printing to stdout has nothing useful to do
+      # with those errors, and checking each one buries the real handling.
+      - std-error-handling
     rules:
       # Test fixtures deliberately construct odd URLs and ignore write errors.
       - path: _test\.go
@@ -1467,6 +1476,17 @@ formatters:
     - gofmt
     - goimports
 ```
+
+Two notes for the implementer:
+
+- The suppression in `internal/player/player.go` is `//nolint:gosec`, not
+  `//nosec`. gosec's native `#nosec` directive is honoured when gosec runs
+  standalone; under golangci-lint the `//nolint:` directive is what applies.
+  If `make lint` still reports G204, that is the likely cause.
+- If `std-error-handling` is not a recognised preset in the installed version,
+  run `golangci-lint config verify` and use the preset names it accepts. Do not
+  respond by disabling `errcheck` wholesale — the goal is to exclude writes to
+  stdout, not to stop checking errors.
 
 - [ ] **Step 4: Verify the lint config and run it**
 
