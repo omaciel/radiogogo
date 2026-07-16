@@ -38,6 +38,27 @@ func TestRunVersion(t *testing.T) {
 	}
 }
 
+func TestResolveVersion(t *testing.T) {
+	cases := []struct {
+		name   string
+		ldflag string
+		build  string
+		want   string
+	}{
+		{"ldflag wins", "v1.2.3", "v9.9.9", "v1.2.3"},
+		{"falls back to build info", "dev", "v0.2.0", "v0.2.0"},
+		{"no build info keeps dev", "dev", "", "dev"},
+		{"devel placeholder keeps dev", "dev", "(devel)", "dev"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := resolveVersion(c.ldflag, c.build); got != c.want {
+				t.Errorf("resolveVersion(%q, %q) = %q, want %q", c.ldflag, c.build, got, c.want)
+			}
+		})
+	}
+}
+
 func TestRunList(t *testing.T) {
 	var out, errOut bytes.Buffer
 

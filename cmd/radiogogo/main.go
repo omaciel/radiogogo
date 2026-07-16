@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 	"text/tabwriter"
 
@@ -19,6 +20,32 @@ import (
 
 // version is stamped at build time with -ldflags -X main.version=...
 var version = "dev"
+
+// resolveVersion picks the version string to display. An explicit ldflag
+// version (anything other than the "dev" default) always wins. Otherwise it
+// falls back to the module version recorded in the build info, unless that is
+// empty or Go's "(devel)" placeholder for a non-release build. This is what
+// lets `go install ...@latest`, which sets no ldflags, still report the tag.
+func resolveVersion(ldflagVersion, buildInfoVersion string) string {
+	if ldflagVersion != "dev" {
+		return ldflagVersion
+	}
+	if buildInfoVersion != "" && buildInfoVersion != "(devel)" {
+		return buildInfoVersion
+	}
+	return ldflagVersion
+}
+
+// readBuildInfoVersion returns the main module's version as recorded by the Go
+// toolchain (e.g. set via `go install pkg@version`), or "" if build info is
+// unavailable.
+func readBuildInfoVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	return info.Main.Version
+}
 
 // Exit codes.
 const (
@@ -74,7 +101,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// --version always works first, unconditionally: asking a program its
 	// version should never be blocked by other flag conflicts.
 	if *showVersion {
-		fmt.Fprintf(stdout, "radiogogo %s\n", version)
+		fmt.Fprintf(stdout, "radiogogo %s\n", resolveVersion(version, readBuildInfoVersion()))
 		return exitOK
 	}
 
